@@ -28,3 +28,6 @@ credentials.json
 
 # 其他文档
 other-docs
+
+# 本地源码归档（仅作离线兜底，不随仓库推送）
+Uneditable-src.zip
