@@ -39,16 +39,19 @@ try {
   recent = [...new Set([...hs, ...recent])].slice(0, 3);
 } catch { /* no store yet */ }
 
+const withCode = (u) => cfg.shareCode
+  ? u + (u.includes('?') ? '&' : '?') + 'sharecode=' + encodeURIComponent(cfg.shareCode)
+  : u;
 const lines = [
   '# 指纹上链 · 剪贴板预置项（逐行复制，别现场打字）',
   '',
   '[项目名] 指纹上链',
   '[副标题] 按一下指纹，10 秒上链；换一份名单，下一场活动就能复用',
   '',
-  '[Demo 链接] ' + base + '/',
-  '[大屏] ' + base + '/screen.html',
-  '[投票页] ' + base + '/vote.html',
-  '[管理页] ' + base + '/admin.html',
+  '[Demo 链接] ' + (cfg.demoUrl || withCode(base + '/')),
+  '[大屏] ' + withCode(base + '/screen.html'),
+  '[投票页] ' + withCode(base + '/vote.html'),
+  '[管理页] ' + withCode(base + '/admin.html'),
   '',
   '[合约地址] ' + addr,
   '[合约浏览器] ' + cfg.explorer + '/address/' + addr,

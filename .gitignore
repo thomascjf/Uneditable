@@ -22,6 +22,9 @@ deploy/
 relayer.key
 store.json
 credentials.json
+.wbapp_*.genie
+.cache/
+.slidep/
 
 # 其他文档
 other-docs

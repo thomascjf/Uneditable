@@ -10,6 +10,11 @@ const HEADERS = {
   'X-Forwarded-Host': HOST,
   'X-Forwarded-Proto': 'https'
 };
+// 线上发布平台的分享链接需要 sharecode；无 cookie 的每个请求都要自带
+const CODE = process.env.TEST_SHARECODE || '';
+const url = (p) => BASE + (CODE
+  ? p + (p.includes('?') ? '&' : '?') + 'sharecode=' + encodeURIComponent(CODE)
+  : p);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const results = [];
 const check = (name, ok, extra = '') => {
@@ -18,12 +23,12 @@ const check = (name, ok, extra = '') => {
 };
 
 const get = async (p) => {
-  const r = await fetch(BASE + p, { headers: HEADERS });
+  const r = await fetch(url(p), { headers: HEADERS });
   if (!r.ok) throw new Error('GET ' + p + ' -> ' + r.status);
   return r.json();
 };
 const post = async (p, b) => {
-  const r = await fetch(BASE + p, { method: 'POST', headers: HEADERS, body: JSON.stringify(b) });
+  const r = await fetch(url(p), { method: 'POST', headers: HEADERS, body: JSON.stringify(b) });
   const j = await r.json();
   if (!r.ok) throw new Error('POST ' + p + ' -> ' + (j.error || r.status));
   return j;
@@ -43,7 +48,7 @@ function rsToDer(sig) {
 
 async function waitServer() {
   for (let i = 0; i < 40; i++) {
-    try { if ((await fetch(BASE + '/api/health')).ok) return; } catch { /* retry */ }
+    try { if ((await fetch(url('/api/health'))).ok) return; } catch { /* retry */ }
     await sleep(500);
   }
   throw new Error('server not reachable at ' + BASE);
@@ -55,15 +60,16 @@ const main = async () => {
 
   // 1) 三个页面 + 配置 + 二维码
   for (const p of ['/screen.html', '/vote.html', '/admin.html', '/style.css']) {
-    const r = await fetch(BASE + p);
+    const r = await fetch(url(p));
     check(p + ' 可访问', r.status === 200);
   }
   const cfg = await get('/api/config');
   check('40 支队伍来自 teams.json', cfg.teams.length === 40, 'count=' + cfg.teams.length);
   check('合约地址已写入配置', /^0x[0-9a-fA-F]{40}$/i.test(cfg.contractAddress), cfg.contractAddress);
-  check('二维码按请求 host 生成（非 localhost）',
-    cfg.urls.vote === 'https://' + HOST + '/vote.html', cfg.urls.vote);
-  const qr = await fetch(BASE + '/api/qr.svg?u=/vote.html');
+  check('二维码按线上 host 生成（非 localhost、带分享码）',
+    cfg.urls.vote.startsWith('https://' + HOST + '/vote.html') && !cfg.urls.vote.includes('localhost'),
+    cfg.urls.vote);
+  const qr = await fetch(url('/api/qr.svg?u=/vote.html'));
   check('二维码 SVG 可生成', qr.ok && (qr.headers.get('content-type') || '').includes('svg'));
 
   const status = await get('/api/status');

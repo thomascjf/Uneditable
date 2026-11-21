@@ -3,10 +3,10 @@
 [项目名] 指纹上链
 [副标题] 按一下指纹，10 秒上链；换一份名单，下一场活动就能复用
 
-[Demo 链接] https://uneditable.app.workbuddy.host/
-[大屏] https://uneditable.app.workbuddy.host/screen.html
-[投票页] https://uneditable.app.workbuddy.host/vote.html
-[管理页] https://uneditable.app.workbuddy.host/admin.html
+[Demo 链接] https://uneditable.app.workbuddy.host/?sharecode=VAMHA6FEJK
+[大屏] https://uneditable.app.workbuddy.host/screen.html?sharecode=VAMHA6FEJK
+[投票页] https://uneditable.app.workbuddy.host/vote.html?sharecode=VAMHA6FEJK
+[管理页] https://uneditable.app.workbuddy.host/admin.html?sharecode=VAMHA6FEJK
 
 [合约地址] 0x92d7bd2fa6c169ed653a44fa94ba4b94e24f1f09
 [合约浏览器] https://testnet.monadvision.com/address/0x92d7bd2fa6c169ed653a44fa94ba4b94e24f1f09

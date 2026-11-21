@@ -36,13 +36,21 @@ function snapshot() {
   };
 }
 
-const protoOf = (req) =>
-  String(req.headers['x-forwarded-proto'] || req.protocol || 'https').split(',')[0].trim();
-const hostOf = (req) =>
-  String(req.headers['x-forwarded-host'] || req.get('host') || config.rpId).split(',')[0].trim();
-const originOf = (req) => `${protoOf(req)}://${hostOf(req)}`;
-const rpIdOf = (req) => hostOf(req).split(':')[0];
-const absUrl = (req, p) => `${originOf(req)}${p}`;
+// 发布平台的反向代理会把 host 改写成内部沙箱域名（…sandbox.cloudstudio.club）。
+// WebAuthn 的 rpId/origin 必须与浏览器地址栏的公开域名完全一致，
+// 二维码也必须指向公开链接，因此固定使用 config.json 里的公开域名，
+// 不信任代理传来的 host。可用 PUBLIC_ORIGIN / PUBLIC_RP_ID 覆盖。
+const PUBLIC_ORIGIN = (process.env.PUBLIC_ORIGIN || config.origin).replace(/\/$/, '');
+const PUBLIC_RP_ID = process.env.PUBLIC_RP_ID || config.rpId;
+const originOf = () => PUBLIC_ORIGIN;
+const rpIdOf = () => PUBLIC_RP_ID;
+// 发布平台的分享链接带 sharecode 鉴权参数；观众手机没有 cookie，
+// 所以二维码与所有对外 URL 必须自带完整分享码。
+const absUrl = (req, p) => {
+  const u = `${originOf(req)}${p}`;
+  if (!config.shareCode || p.startsWith('http')) return u;
+  return u + (u.includes('?') ? '&' : '?') + 'sharecode=' + encodeURIComponent(config.shareCode);
+};
 const validTeam = (id) => teamById.has(Number(id));
 
 app.get('/', (req, res) => res.redirect('/screen.html'));

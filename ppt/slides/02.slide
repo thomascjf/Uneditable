@@ -1,0 +1,52 @@
+<Slide style={{
+    width: '1280px',
+    height: '720px',
+    background: '#070a0f',
+    padding: '60px 60px',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    fontFamily: "'思源黑体','Microsoft YaHei',sans-serif",
+    color: '#FFFFFF',
+}}>
+    <Box style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, width: '100%' }}>
+
+        <Box style={{ width: 140, height: 168, background: '#0E141C', border: '1px solid #33404E', borderRadius: 8, padding: 14, flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', textAlign: 'center', lineHeight: 1.4, color: '#FFFFFF' }}>手机扫码</Text>
+        </Box>
+
+        <svg width={20} height={16} viewBox='0 0 20 16'>
+            <path d='M0 8 H13 M9 4 L13 8 L9 12' fill='none' stroke='#5A6675' strokeWidth='2' />
+        </svg>
+
+        <Box style={{ width: 190, height: 168, background: '#0E141C', border: '1px solid #33404E', borderRadius: 8, padding: 14, flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', textAlign: 'center', lineHeight: 1.4, color: '#FFFFFF' }}>passkey 指纹签名</Text>
+        </Box>
+
+        <svg width={20} height={16} viewBox='0 0 20 16'>
+            <path d='M0 8 H13 M9 4 L13 8 L9 12' fill='none' stroke='#5A6675' strokeWidth='2' />
+        </svg>
+
+        <Box style={{ width: 190, height: 168, background: '#0E141C', border: '1px solid #33404E', borderRadius: 8, padding: 14, flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', textAlign: 'center', lineHeight: 1.4, color: '#FFFFFF' }}>转发器代付 gas</Text>
+        </Box>
+
+        <svg width={20} height={16} viewBox='0 0 20 16'>
+            <path d='M0 8 H13 M9 4 L13 8 L9 12' fill='none' stroke='#5A6675' strokeWidth='2' />
+        </svg>
+
+        <Box style={{ width: 240, height: 168, background: '#0E141C', border: '2px solid #A78BFA', borderRadius: 8, padding: 14, flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 10 }}>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', textAlign: 'center', lineHeight: 1.4, color: '#FFFFFF' }}>BlitzBoard 合约</Text>
+            <Text style={{ fontSize: 14, textAlign: 'center', lineHeight: 1.4, color: '#A78BFA' }}>0x0100 P256 预编译 · 合约内验签</Text>
+        </Box>
+
+        <svg width={20} height={16} viewBox='0 0 20 16'>
+            <path d='M0 8 H13 M9 4 L13 8 L9 12' fill='none' stroke='#5A6675' strokeWidth='2' />
+        </svg>
+
+        <Box style={{ width: 240, height: 168, background: '#0E141C', border: '1px solid #33404E', borderRadius: 8, padding: 14, flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 10 }}>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', textAlign: 'center', lineHeight: 1.4, color: '#FFFFFF' }}>双栏大屏</Text>
+            <Text style={{ fontSize: 14, textAlign: 'center', lineHeight: 1.5, color: '#B6C0CC' }}>左：中心化数据库·可改<br />右：Monad 链上·改不了</Text>
+        </Box>
+
+    </Box>
+</Slide>

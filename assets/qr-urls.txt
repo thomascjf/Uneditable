@@ -1,4 +1,4 @@
-投票页	https://uneditable.app.workbuddy.host/vote.html
-后台管理（现场篡改）	https://uneditable.app.workbuddy.host/admin.html
+投票页	https://uneditable.app.workbuddy.host/vote.html?sharecode=VAMHA6FEJK
+后台管理（现场篡改）	https://uneditable.app.workbuddy.host/admin.html?sharecode=VAMHA6FEJK
 测试网水龙头	https://faucet.monad.xyz/
-大屏（备用）	https://uneditable.app.workbuddy.host/screen.html
+大屏（备用）	https://uneditable.app.workbuddy.host/screen.html?sharecode=VAMHA6FEJK

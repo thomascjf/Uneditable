@@ -10,11 +10,14 @@ const outDir = path.join(root, 'assets');
 fs.mkdirSync(outDir, { recursive: true });
 
 const base = cfg.baseUrl.replace(/\/$/, '');
+const withCode = (u) => cfg.shareCode
+  ? u + (u.includes('?') ? '&' : '?') + 'sharecode=' + encodeURIComponent(cfg.shareCode)
+  : u;
 const items = [
-  { file: 'qr-vote.png', url: base + '/vote.html', label: '投票页' },
-  { file: 'qr-admin.png', url: base + '/admin.html', label: '后台管理（现场篡改）' },
+  { file: 'qr-vote.png', url: withCode(base + '/vote.html'), label: '投票页' },
+  { file: 'qr-admin.png', url: withCode(base + '/admin.html'), label: '后台管理（现场篡改）' },
   { file: 'qr-faucet.png', url: 'https://faucet.monad.xyz/', label: '测试网水龙头' },
-  { file: 'qr-screen.png', url: base + '/screen.html', label: '大屏（备用）' }
+  { file: 'qr-screen.png', url: withCode(base + '/screen.html'), label: '大屏（备用）' }
 ];
 
 for (const it of items) {

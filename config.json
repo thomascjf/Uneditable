@@ -12,6 +12,9 @@
   "rpId": "uneditable.app.workbuddy.host",
   "origin": "https://uneditable.app.workbuddy.host",
   "baseUrl": "https://uneditable.app.workbuddy.host",
+  "shareCode": "VAMHA6FEJK",
+  "demoUrl": "https://uneditable.app.workbuddy.host/?sharecode=VAMHA6FEJK",
+  "githubUrl": "https://github.com/thomascjf/Uneditable",
   "lockConfigAfterSync": false,
   "relayerKeyFile": "relayer.key",
   "deployBlock": 81521563

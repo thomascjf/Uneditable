@@ -12,6 +12,20 @@ Monad Blitz@广州（eventId=18）参赛项目。它不是一个投票应用，�
 
 ---
 
+## 公网 Demo
+
+**https://uneditable.app.workbuddy.host/?sharecode=VAMHA6FEJK**
+
+分享链接带 `sharecode` 鉴权参数，现场三张二维码与剪贴板物料都已带上它；请始终使用完整链接，裸域名会被平台拦截（403）。
+
+- 大屏：`https://uneditable.app.workbuddy.host/screen.html?sharecode=VAMHA6FEJK`
+- 手机投票：`https://uneditable.app.workbuddy.host/vote.html?sharecode=VAMHA6FEJK`
+- 后台篡改：`https://uneditable.app.workbuddy.host/admin.html?sharecode=VAMHA6FEJK`
+
+公开 GitHub 仓库：`https://github.com/thomascjf/Uneditable`
+
+---
+
 ## 链上信息（可自行验证）
 
 | 项 | 值 |
