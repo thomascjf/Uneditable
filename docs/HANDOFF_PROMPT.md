@@ -50,7 +50,7 @@ L2 加分：确认耗时显示、5 位没碰过钱包的同学实测数据、录
 主方案用 WorkBuddy 应用发布（备选 Railway / Render / Vercel）。服务必须监听 $PORT 环境变量并绑定 0.0.0.0，用 npm start 起 Express。发布属于写线上链接的操作，需用户明确说「发布 / 上线」才执行。部署后按顺序验收 7 项：线上 eth_chainId 通 → 合约地址在浏览器可查且 ABI 已同步 → 三个页面在手机 4G（非同一 WiFi）下 HTTPS 可开 → 真机 passkey 投票成功 → 左栏篡改右栏不变且右栏 2 秒内刷新 → 转发器余额够 → 三个二维码（投票/管理/水龙头）指向线上而非 localhost。
 
 【GitHub 与提交边界】
-本地已有 main 分支与 4 次提交（最新 304533f 是方案文档），可继续正常提交，但不要改写或 amend 已有提交、不要 force push、不要动 AGENTS.md 的 MOJO 提醒块。由你负责创建公开 GitHub 仓库、推送归档并给出仓库地址。Mojo 提交用 mojo-submit skill（凭证 .mojo/agent.json），项目名填「指纹上链」，简介直接取 docs/PLAN.md 第 1 节「Mojo 提交简介（可直接用）」那段，另需准备：简介、Demo 链接、GitHub 地址、至少一张自己上传的截图（建议大屏双栏 + 篡改前后各一张）；提交后进 pending 等人工审核。
+本地已有 main 分支与 6 次提交（最新 c088b01 是文档调整），可继续正常提交，但不要改写或 amend 已有提交、不要 force push、不要动 AGENTS.md 的 MOJO 提醒块。由你负责创建公开 GitHub 仓库、推送归档并给出仓库地址。Mojo 提交用 mojo-submit skill（凭证 .mojo/agent.json），项目名填「指纹上链」，简介直接取 docs/PLAN.md 第 1 节「Mojo 提交简介（可直接用）」那段，另需准备：Demo 链接、GitHub 地址、至少一张自己上传的截图（建议大屏双栏 + 篡改前后各一张）；提交后进 pending 等人工审核。
 
 【交付物】
 合约地址与 ABI（写进 README）、公网 Demo 链接、公开 GitHub 地址、三张二维码物料、2 页极简 PPT（P1 一句话钩子、P2 架构图只高亮 P256 预编译）、三分钟逐句讲稿、剪贴板预置项、截图、录屏兜底。逐句脚本、Q&A 三问与现场检查清单见 docs/PLAN.md 第 8 节。
