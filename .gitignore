@@ -16,3 +16,6 @@ coverage/
 *.log
 .env
 .env.*
+
+# 其他文档
+other-docs
