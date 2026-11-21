@@ -40,8 +40,12 @@ h1{font-size:clamp(30px,3.3vw,54px);margin:0;letter-spacing:2px}
 .badge{background:#1a2634;color:#bcd0e4;border-radius:6px;padding:2px 8px;font-size:12px}
 .time{color:var(--muted);font-size:12px}
 .e-text{margin:6px 0 5px;line-height:1.45;word-break:break-word}
-.tx{font-size:12px;color:#8fb8ff}
-.ms{font-size:12px;color:var(--chain);margin-left:10px}
+.tx{font-size:12px;color:#8fb8ff;text-decoration:none}
+.tx:hover{text-decoration:underline}
+.tx.wait{color:var(--muted);font-style:italic}
+.e-meta{font-size:11px;color:var(--muted);margin-top:3px;letter-spacing:.2px}
+.e-tx{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-top:3px}
+.ms{font-size:12px;color:var(--chain)}
 .local{font-size:12px;color:var(--central)}
 .qrcodes{display:flex;gap:12px;justify-content:flex-end}
 .qr{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:7px 13px}
@@ -112,14 +116,29 @@ function renderVotes(node,votes){
   node.innerHTML=arr.length?arr.map((x,i)=>`<div class="vote-row"><span class="rank">${i+1}</span><span class="tname">${esc(tm.get(x.id)||'#'+x.id)}</span><span class="bar"><i style="width:${(x.n/max*100).toFixed(1)}%"></i></span><b>${x.n}</b></div>`).join('')
     :'<div class="empty">等待第一票…</div>';
 }
+function chainMeta(e){
+  const bits=['#'+e.id];
+  if(e.blockNumber) bits.push('区块 '+e.blockNumber);
+  bits.push(e.kind===1?'指纹代付':'钱包直签');
+  if(e.gasUsed) bits.push('gas '+Number(e.gasUsed).toLocaleString());
+  if(e.status) bits.push(e.status==='success'?'已确认':'执行失败');
+  return bits.join(' · ');
+}
+function chainTx(e,ex){
+  const h=e.txHash;
+  // 没有真实交易哈希时绝不生成指向 /tx/ 的无效链接
+  if(!h) return '<span class="tx wait">链上存证 · 交易哈希同步中</span>';
+  const s=h.slice(0,10)+'…'+h.slice(-6);
+  return `<a class="tx" href="${ex}/tx/${encodeURIComponent(h)}" title="${esc(h)}" target="_blank" rel="noopener">${esc(s)} ↗</a>`;
+}
 function renderFeed(node,entries,isChain){
   const list=(entries||[]).slice(-14).reverse();
-  const ex=cfg?.explorer||EXPLORER_DEFAULT;
+  const ex=(cfg?.explorer||EXPLORER_DEFAULT).replace(/\/$/,'');
   node.innerHTML=list.length?list.map(e=>`<div class="entry">
     <div class="e-head"><span class="badge">${esc(tm.get(e.teamId)||'#'+e.teamId)}</span><span class="time">${fmt(e.timestamp)}</span></div>
     <div class="e-text">${esc(e.text||'（无留言）')}</div>
     ${isChain
-      ? `<a class="tx" href="${ex}/tx/${esc(e.txHash)}" target="_blank" rel="noopener">${esc((e.txHash||'').slice(0,14))}… ↗</a>${e.confirmedMs?`<span class="ms">${(e.confirmedMs/1000).toFixed(1)}s 确认</span>`:''}`
+      ? `<div class="e-meta">${esc(chainMeta(e))}</div><div class="e-tx">${chainTx(e,ex)}${e.confirmedMs?`<span class="ms">${(e.confirmedMs/1000).toFixed(1)}s 确认</span>`:''}</div>`
       : `<span class="local">store.json · 可改</span>`}
   </div>`).join(''):'<div class="empty">暂无留言 · 扫码投第一票</div>';
 }

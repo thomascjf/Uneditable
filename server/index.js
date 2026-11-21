@@ -231,10 +231,10 @@ app.post('/api/central/seed', (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// 链上轮询：1.5 秒一次，读 Voted 事件（自带交易哈希），推给大屏右栏
+// 链上轮询：1.5 秒一次，读合约条目 + 交易元数据，推给大屏右栏
 // ---------------------------------------------------------------------------
 let polling = false;
-setInterval(async () => {
+async function tick() {
   if (polling || !config.contractAddress) return;
   polling = true;
   try {
@@ -251,7 +251,7 @@ setInterval(async () => {
   } catch (e) {
     console.warn('[poll]', (e.shortMessage || e.message || '').slice(0, 160));
   } finally { polling = false; }
-}, 1500);
+}
 
 app.listen(PORT, '0.0.0.0', async () => {
   console.log(`[uneditable] listening on 0.0.0.0:${PORT}`);
@@ -263,4 +263,7 @@ app.listen(PORT, '0.0.0.0', async () => {
   } catch (e) {
     console.warn('[uneditable] chain status unavailable:', e.message);
   }
+  // 启动时先做一次（含历史交易回填），再开启定时轮询，避免竞态
+  await tick();
+  setInterval(tick, 1500);
 });

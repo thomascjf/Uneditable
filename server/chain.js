@@ -59,6 +59,118 @@ const read = (functionName, args = []) =>
   pub.readContract({ address: ADDRESS(), abi, functionName, args });
 
 // ---------------------------------------------------------------------------
+// 交易索引：entryId -> { txHash, blockNumber, gasUsed, status, from }
+// knownTx 是纯内存，服务重启后历史条目的交易哈希会丢失，右栏就会全部指向
+// 同一个空链接。这里用链上 Voted 事件回填完整索引，并缓存到 chain-tx.json，
+// 让重启也能秒级恢复；缓存不全时才按 100 块窗口分段扫描全链。
+// ---------------------------------------------------------------------------
+const VOTED_EVENT = parseAbiItem(
+  'event Voted(uint256 indexed id, uint8 kind, uint16 indexed teamId, address indexed author, bytes32 credHash, string text, uint64 timestamp, bytes32 nonce)'
+);
+const TX_CACHE_FILE = path.join(rootDir, 'chain-tx.json');
+const txIndex = new Map();
+let backfilled = false;
+
+const txFields = (x) => ({
+  id: x.id,
+  txHash: x.txHash ?? null,
+  blockNumber: x.blockNumber ?? null,
+  gasUsed: x.gasUsed ?? null,
+  status: x.status ?? null,
+  from: x.from ?? null
+});
+
+function loadTxCache() {
+  try {
+    const arr = JSON.parse(fs.readFileSync(TX_CACHE_FILE, 'utf8'));
+    for (const x of arr) if (x && Number.isInteger(x.id) && x.txHash) txIndex.set(x.id, txFields(x));
+  } catch { /* 首次启动 / 只读沙箱：靠链上回填 */ }
+}
+export function saveTxCache() {
+  try {
+    fs.writeFileSync(TX_CACHE_FILE, JSON.stringify([...txIndex.values()], null, 2));
+  } catch (e) {
+    console.warn('[chain] tx cache not writable:', e.code || e.message);
+  }
+}
+loadTxCache();
+
+const indexOf = (id) => txIndex.has(id) ? txFields(txIndex.get(id)) : null;
+function remember(item) {
+  const next = { ...(txIndex.get(item.id) || { id: item.id }) };
+  for (const k of ['txHash', 'blockNumber', 'gasUsed', 'status', 'from']) {
+    if (item[k] !== null && item[k] !== undefined) next[k] = item[k];
+  }
+  next.id = item.id;
+  txIndex.set(item.id, next);
+}
+
+export async function backfillTxIndex() {
+  if (backfilled || !ADDRESS()) return;
+  const latest = await pub.getBlockNumber();
+  const total = Number(await read('total'));
+  // 缓存已覆盖全部条目且带交易详情时，无需再扫链
+  const complete = total > 0 && Array.from({ length: total }, (_, i) => i)
+    .every((i) => { const x = txIndex.get(i); return x && x.txHash && x.gasUsed; });
+  if (complete) { backfilled = true; return; }
+
+  let start = BigInt(config.deployBlock || 0);
+  if (!config.deployBlock) {
+    // 配置缺部署区块时，从部署交易回执反查；再兜底只扫最近 2 万块，
+    // 绝不能从创世块开始扫（公共 RPC 会被打爆）。
+    try {
+      start = (await pub.getTransactionReceipt({ hash: config.deployTxHash })).blockNumber;
+    } catch {
+      start = latest > 20000n ? latest - 20000n : 0n;
+    }
+  }
+  const SPAN = 100n;       // Monad 公共 RPC：120 块起报 block range too large
+  const CONCURRENCY = 6;
+  const MAX_SEGMENTS = 220;
+  let segments = [];
+  for (let b = start; b <= latest; b += SPAN) {
+    segments.push([b, b + SPAN - 1n > latest ? latest : b + SPAN - 1n]);
+  }
+  if (segments.length > MAX_SEGMENTS) segments = segments.slice(-MAX_SEGMENTS);
+  let found = 0;
+  for (let i = 0; i < segments.length; i += CONCURRENCY) {
+    const batch = await Promise.all(segments.slice(i, i + CONCURRENCY).map(([f, t]) =>
+      pub.getLogs({ address: ADDRESS(), event: VOTED_EVENT, fromBlock: f, toBlock: t }).catch(() => [])
+    ));
+    for (const logs of batch) for (const l of logs) {
+      const id = l.args?.id === undefined ? null : Number(l.args.id);
+      if (id === null || txIndex.has(id)) continue;
+      txIndex.set(id, txFields({ id, txHash: l.transactionHash, blockNumber: Number(l.blockNumber) }));
+      found++;
+    }
+  }
+  if (found) saveTxCache();
+  backfilled = true;
+  console.log('[chain] tx index backfilled:', txIndex.size, 'tx (new ' + found + ')');
+}
+
+// 用交易回执补齐 gasUsed / status / from，每个条目只尝试一次
+export async function enrichReceipts(items) {
+  const need = items.filter((x) => x.txHash && !x.gasUsed && !x.receiptTried).slice(0, 24);
+  if (!need.length) return [];
+  const updated = [];
+  await Promise.all(need.map(async (x) => {
+    x.receiptTried = true;
+    try {
+      const r = await pub.getTransactionReceipt({ hash: x.txHash });
+      x.blockNumber = x.blockNumber ?? Number(r.blockNumber);
+      x.gasUsed = String(r.gasUsed);
+      x.status = r.status;
+      x.from = r.from;
+      remember(x);
+      updated.push(x);
+    } catch { /* 保留日志里已有的哈希与区块 */ }
+  }));
+  if (updated.length) saveTxCache();
+  return updated;
+}
+
+// ---------------------------------------------------------------------------
 // WebAuthn 域名绑定：服务启动时按真实 host 一次性同步到合约并可选锁定。
 // 换域名只需改 config.json 的 rpId/origin，不需要重新部署合约。
 // ---------------------------------------------------------------------------
@@ -158,44 +270,46 @@ export async function submitPasskeyVote(p) {
     }
     try {
       const total = Number(await read('total'));
-      if (total > 0) knownTx.set(total - 1, hash);
+      if (total > 0) {
+        knownTx.set(total - 1, hash);
+        remember({ id: total - 1, txHash: hash });
+        saveTxCache();
+      }
     } catch { /* getLogs 会兜底补哈希 */ }
     return hash;
   });
 }
 
 // ---------------------------------------------------------------------------
-// 链上读取：轮询 Voted 事件，天然带交易哈希，供右栏与大屏 SSE 使用。
+// 链上读取：total() + getEntry(i) 为主，交易索引 / 事件 / 回执补齐元数据。
 // ---------------------------------------------------------------------------
-const VOTED_EVENT = parseAbiItem(
-  'event Voted(uint256 indexed id, uint8 kind, uint16 indexed teamId, address indexed author, bytes32 credHash, string text, uint64 timestamp, bytes32 nonce)'
-);
-
 export const chainFeed = [];
 
-/// 主数据源用 total() + getEntry(i) 增量读，不受 eth_getLogs 的
-/// "block range too large" 限制（Monad 公共 RPC 对日志查询有 range 上限）；
-/// 只在一个很窄的最近窗口里用 getLogs 补交易哈希与确认耗时。
 export async function pollChain() {
   if (!ADDRESS()) return [];
   const latest = await pub.getBlockNumber();
+  await backfillTxIndex();          // 首次启动回填全部历史交易（有缓存时几乎零成本）
 
   const total = Number(await read('total'));
   const fresh = [];
   for (let i = chainFeed.length; i < total; i++) {
     const e = await read('getEntry', [BigInt(i)]);
-    const hash = knownTx.get(i) || null;
+    const idx = indexOf(i);
+    const hash = knownTx.get(i) || idx?.txHash || null;
     const started = hash ? txStarted.get(hash.toLowerCase()) : null;
     const item = {
       id: i, kind: Number(e.kind), teamId: Number(e.teamId),
       author: e.author, credHash: e.credHash, text: e.text,
       timestamp: Number(e.timestamp), txHash: hash,
-      blockNumber: null, confirmedMs: started ? Date.now() - started : null
+      blockNumber: idx?.blockNumber ?? null,
+      gasUsed: idx?.gasUsed ?? null, status: idx?.status ?? null, from: idx?.from ?? null,
+      confirmedMs: started ? Date.now() - started : null
     };
     chainFeed.push(item);
     fresh.push(item);
   }
 
+  // 最近 60 块窗口：补刚上链、还没进索引的交易（RPC 上限 >60 才安全）
   const from = latest > 60n ? latest - 60n : 0n;
   try {
     const logs = await pub.getLogs({
@@ -210,6 +324,7 @@ export async function pollChain() {
       if (!item.txHash) {
         item.txHash = l.transactionHash;
         item.blockNumber = Number(l.blockNumber);
+        remember(item);
         changed = true;
       }
       const started = txStarted.get(l.transactionHash.toLowerCase());
@@ -220,9 +335,21 @@ export async function pollChain() {
       if (changed && !fresh.includes(item)) fresh.push(item);
     }
   } catch (e) {
-    // getLogs 只是增强；entries 主链路已经独立可用
     console.warn('[poll] getLogs skipped:', (e.shortMessage || e.message || '').slice(0, 100));
   }
+
+  // 重启后从索引补齐历史条目的哈希
+  for (const item of chainFeed) {
+    if (!item.txHash && txIndex.has(item.id)) {
+      const idx = indexOf(item.id);
+      item.txHash = idx.txHash;
+      item.blockNumber = idx.blockNumber;
+      if (!fresh.includes(item)) fresh.push(item);
+    }
+  }
+
+  const updated = await enrichReceipts(chainFeed);
+  for (const item of updated) if (!fresh.includes(item)) fresh.push(item);
   return fresh;
 }
 
