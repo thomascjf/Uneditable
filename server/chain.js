@@ -109,13 +109,20 @@ export async function backfillTxIndex() {
   if (backfilled || !ADDRESS()) return;
   const latest = await pub.getBlockNumber();
   const total = Number(await read('total'));
-  // 缓存已覆盖全部条目且带交易详情时，无需再扫链
-  const complete = total > 0 && Array.from({ length: total }, (_, i) => i)
-    .every((i) => { const x = txIndex.get(i); return x && x.txHash && x.gasUsed; });
-  if (complete) { backfilled = true; return; }
+  const ids = Array.from({ length: total }, (_, i) => i);
+  // 条目齐全时不必扫链；缺 gasUsed 等详情交给 enrichReceipts 用回执补。
+  const allPresent = total > 0 && ids.every((i) => txIndex.get(i)?.txHash);
+  if (allPresent) { backfilled = true; return; }
 
-  let start = BigInt(config.deployBlock || 0);
-  if (!config.deployBlock) {
+  let start;
+  if (txIndex.size) {
+    // 增量：只扫缓存中最后一条所在区块之后（回退 20 块防边界与重组），
+    // 避免每多一条链上投票就在启动时全量扫 1.5 万块、造成 20 秒空窗。
+    const maxBlock = [...txIndex.values()].reduce((m, x) => Math.max(m, Number(x.blockNumber) || 0), 0);
+    start = BigInt(Math.max(maxBlock - 20, Number(config.deployBlock || 0)));
+  } else if (config.deployBlock) {
+    start = BigInt(config.deployBlock);
+  } else {
     // 配置缺部署区块时，从部署交易回执反查；再兜底只扫最近 2 万块，
     // 绝不能从创世块开始扫（公共 RPC 会被打爆）。
     try {

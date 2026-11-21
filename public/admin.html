@@ -57,7 +57,7 @@ h1{font-size:27px;margin:0 0 6px}
     <div>
       <h2>把这一页投屏给观众</h2>
       <p class="muted" style="font-size:13px;line-height:1.7">扫码后三部手机可以同时改。改完看大屏：左栏立刻变，右栏从链上读，一动不动。</p>
-      <button id="reseed" class="btn">重置并预置演示数据</button>
+      <button id="reseed" class="btn">重置并对齐链上数据</button>
       <a class="btn" href="/screen.html" target="_blank">打开大屏 ↗</a>
       <a class="btn" href="/api/qr.svg?u=/admin.html" target="_blank">下载二维码 ↗</a>
     </div>
@@ -96,15 +96,15 @@ document.querySelectorAll('[data-op]').forEach(b=>b.addEventListener('click',asy
   if(op==='setVotes')payload={teamId:Number(el('teamSel').value),value:Number(el('voteVal').value)};
   if(op==='deleteEntry')payload={id:Number(el('delSel').value)};
   if(op==='editText')payload={id:Number(el('editSel').value),text:el('editText').value};
-  if(Object.values(payload).some(v=>Number.isNaN(v))) { log('请先预置演示数据'); return; }
+  if(Object.values(payload).some(v=>Number.isNaN(v))) { log('请先点「重置并对齐链上数据」'); return; }
   try{const r=await post('/api/central/tamper',{op,payload});log('✓ '+r.note.detail+'　（右栏不变）');await refresh()}
   catch(e){log('✗ '+e.message)}
 }));
 
 el('reseed').addEventListener('click',async()=>{
   try{
-    await post('/api/central/seed',{teamIds:cfg.teams.slice(0,8).map(t=>t.id)});
-    log('✓ 已重置并预置 6 条中心化演示数据');await refresh();
+    const s=await post('/api/central/seed',{});
+    log('✓ 已与链上对齐：左右两栏各 '+(s.entries||[]).length+' 条，票数一致');await refresh();
   }catch(e){log('✗ '+e.message)}
 });
 

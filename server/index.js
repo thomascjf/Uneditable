@@ -224,8 +224,11 @@ app.post('/api/central/reset', (req, res) => {
 });
 
 app.post('/api/central/seed', (req, res) => {
-  const ids = (req.body?.teamIds || []).map(Number).filter(validTeam);
-  const state = central.seed(ids);
+  // 现场「重置并对齐链上数据」：以链为准重建左栏，保证左右两栏逐条一致。
+  // 链上还没有条目时才回退到固定演示文案，避免空屏。
+  const state = chain.chainFeed.length
+    ? central.alignFromChain(chain.chainFeed)
+    : central.seed((req.body?.teamIds || []).map(Number).filter(validTeam));
   broadcast('central', state);
   res.json(state);
 });

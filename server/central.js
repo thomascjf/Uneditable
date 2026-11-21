@@ -102,7 +102,8 @@ const SEED_TEXTS = [
   '现场改数据库这个演示很直观'
 ];
 
-/// 演示前预置：中心化库与链上各写若干条，保证空场也不空屏。
+/// 空链兜底：只写中心化库的固定演示文案，保证空场也不空屏。
+/// 注意：这里不写链上；现场对齐请用 alignFromChain()。
 export function seed(teamIds) {
   reset();
   const ids = teamIds.length ? teamIds : [685, 684, 683, 681, 680, 679];
@@ -112,5 +113,28 @@ export function seed(teamIds) {
     kind: 'seed',
     author: '预置数据'
   }));
+  return getState();
+}
+
+/// 以链上当前条目为准重建中心化库：现场点「重置并对齐链上数据」时调用。
+/// 队伍 / 留言 / 时间 / 交易哈希 / 票数全部取自链上，左右两栏逐条一致。
+export function alignFromChain(chainEntries) {
+  const votes = {};
+  const entries = (chainEntries || []).map((e) => {
+    const k = String(e.teamId);
+    votes[k] = (votes[k] || 0) + 1;
+    return {
+      id: Number(e.id) + 1,
+      teamId: Number(e.teamId),
+      text: String(e.text || '').slice(0, 200),
+      kind: Number(e.kind) === 0 ? 'wallet' : 'passkey',
+      author: Number(e.kind) === 0 ? '钱包用户' : '指纹观众',
+      txHash: e.txHash || '',
+      timestamp: Number(e.timestamp)
+    };
+  });
+  seq = entries.reduce((m, e) => Math.max(m, Number(e.id) || 0), 0);
+  store = { version: store.version, entries, votes, audit: [] };
+  persist();
   return getState();
 }
