@@ -1,0 +1,23 @@
+指纹上链 · Uneditable
+按一下指纹，10 秒上链；换一份名单，下一场活动就能复用。
+
+【项目背景】
+Monad Blitz@广州（eventId=18）参赛项目。它不是一个投票应用，而是一套可复用的零门槛 Web3 入口：观众扫码、按一下指纹，10 秒内在 Monad 测试网投出一票并留下留言，不需要装钱包、不需要助记词、不需要代币、不需要自己付 gas。换一份 teams.json 名单，下一场黑客松、校园选举、会议表决就能直接复用，其余代码一行不用改。
+
+【两个亮点】
+1. 零门槛上链入口：passkey 指纹签名 + 转发器代付 gas，签名由用户设备产生，合约内用 Monad 的 P256 预编译 0x0100（EIP-7951）直接验签；转发器只付 gas、改不了票的内容，一次性 challenge 防重放、每枚凭据限投一票。用户也可打开「我自己有 Monad 代币，自己付 gas」开关，走钱包 EIP-712 直签；两个写入口写同一个链上数组。
+2. 让观众亲手篡改：大屏左栏读中心化数据库（store.json），右栏读 Monad 合约，同一份内容双写。把后台二维码投屏，请台下观众亲手改票数、删留言、改文字——左栏立刻变，右栏纹丝不动；点开右栏每条留言各自的交易哈希即可在 MonadVision 验证。十秒对照，让不懂去中心化的人看懂「规则写在合约里，谁都改不了」。
+
+【与 Monad 的结合点】
+合约 BlitzBoard.sol 当天从零编写，部署在 Monad Testnet（chainId 10143 / 0x279f），地址 0x92d7bd2fa6c169ed653a44fa94ba4b94e24f1f09。voteByPasskey() 在链上核对 clientDataJSON 的 type / origin / challenge、authData 的 rpIdHash 与 UP/UV 标志，再 staticcall 0x0100 校验 160 字节 P-256 签名输入（hash‖r‖s‖qx‖qy）；服务端提交前用 Web Crypto 预检，但最终信任根是合约里的预编译。手机端不直连 RPC，链上读写全部走后端代理，规避现场 4G 访问公共 RPC 不稳；后端轮询链上条目并通过 SSE 推给大屏右栏。完整 ABI、合约源码与自测脚本见 GitHub 仓库 README。
+
+【界面入口】（请始终使用带 sharecode 的完整链接，裸域名会被平台拦截 403）
+· Demo 首页：https://uneditable.app.workbuddy.host/?sharecode=VAMHA6FEJK
+· 大屏双栏：https://uneditable.app.workbuddy.host/screen.html?sharecode=VAMHA6FEJK
+· 手机投票：https://uneditable.app.workbuddy.host/vote.html?sharecode=VAMHA6FEJK
+· 后台篡改：https://uneditable.app.workbuddy.host/admin.html?sharecode=VAMHA6FEJK
+· 公开仓库（README / 完整 ABI）：https://github.com/thomascjf/Uneditable
+· 合约浏览器：https://testnet.monadvision.com/address/0x92d7bd2fa6c169ed653a44fa94ba4b94e24f1f09
+
+【必要说明】
+单端口 Node/Express 服务托管三个原生 JS 页面、/api 接口、SSE 与转发器；中心化库 store.json 可被管理页任意修改。代码当天从零编写，仅用 viem / express / solc / qrcode / @simplewebauthn/server 等标准库，P256 staticcall 片段来自 Monad 官方文档；teams.json 是活动公开数据。转发器为一次性测试网钱包，只有 100 MON 测试币，私钥不入库、不随发布上传。项目已提交并处于 pending，等待主办方人工审核。
