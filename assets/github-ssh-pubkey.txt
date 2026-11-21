@@ -1,0 +1,14 @@
+把下面这一整行添加到 GitHub： https://github.com/settings/keys  →  New SSH key
+Title 建议：monad-blitz-guangzhou-2026-uneditable
+Key type：Authentication Key
+
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE81Ocylli+zgra1kES3H9PpeU8OtznQpXqKDu0gs27U monad-blitz-guangzhou-2026-uneditable
+
+本地私钥 C:\Users\Administrator\.ssh\id_ed25519_uneditable 只留在本机，绝不外发、绝不入库。
+SSH 别名已写在 C:\Users\Administrator\.ssh\config：
+  Host github-uneditable
+      HostName github.com
+      User git
+      IdentityFile ~/.ssh/id_ed25519_uneditable
+      IdentitiesOnly yes
+推送时用：git@github-uneditable:thomascjf/Uneditable.git

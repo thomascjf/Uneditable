@@ -17,5 +17,11 @@ coverage/
 .env
 .env.*
 
+# 发布产物与运行时数据（relayer.key 是唯一允许随发布上传的密钥，绝不入库）
+deploy/
+relayer.key
+store.json
+credentials.json
+
 # 其他文档
 other-docs

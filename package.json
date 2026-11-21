@@ -1,0 +1,29 @@
+{
+  "name": "uneditable",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "指纹上链 · 零门槛上链入口（Monad Blitz@广州 eventId=18）",
+  "scripts": {
+    "start": "node server/index.js",
+    "compile": "node scripts/compile.js",
+    "deploy:contract": "node scripts/deploy.js",
+    "selftest": "node scripts/selftest.js",
+    "qr": "node scripts/qr.js",
+    "bundle": "node scripts/bundle.js"
+  },
+  "dependencies": {
+    "@simplewebauthn/server": "14.1.0",
+    "express": "5.3.0",
+    "qrcode": "1.5.4",
+    "solc": "0.8.39",
+    "uneditable": "file:",
+    "viem": "2.58.4"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^25.18.1"
+  }
+}

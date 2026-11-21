@@ -1,0 +1,31 @@
+# 指纹上链 · 剪贴板预置项（逐行复制，别现场打字）
+
+[项目名] 指纹上链
+[副标题] 按一下指纹，10 秒上链；换一份名单，下一场活动就能复用
+
+[Demo 链接] https://uneditable.app.workbuddy.host/
+[大屏] https://uneditable.app.workbuddy.host/screen.html
+[投票页] https://uneditable.app.workbuddy.host/vote.html
+[管理页] https://uneditable.app.workbuddy.host/admin.html
+
+[合约地址] 0x92d7bd2fa6c169ed653a44fa94ba4b94e24f1f09
+[合约浏览器] https://testnet.monadvision.com/address/0x92d7bd2fa6c169ed653a44fa94ba4b94e24f1f09
+[部署交易] 0xe09f6a109add89a4274a8dcbe29d496bbffe60ce203c7e4608b401547369ae4f
+[部署交易浏览器] https://testnet.monadvision.com/tx/0xe09f6a109add89a4274a8dcbe29d496bbffe60ce203c7e4608b401547369ae4f
+[转发器地址] 0xa5d28e6513766a36a3c2a00AF0966A80631Fc8E0
+[MonadVision] https://testnet.monadvision.com
+[水龙头] https://faucet.monad.xyz/
+[GitHub] https://github.com/thomascjf/Uneditable
+[chainId] 10143
+[RPC] https://testnet-rpc.monad.xyz
+
+[最近交易哈希]
+  1. 0xe09f6a109add89a4274a8dcbe29d496bbffe60ce203c7e4608b401547369ae4f
+     https://testnet.monadvision.com/tx/0xe09f6a109add89a4274a8dcbe29d496bbffe60ce203c7e4608b401547369ae4f
+  2. 0xfc88c79bce09a86510cddae1e3c8c0eeb8017f79efafee3ced060eb3b6ae6a05
+     https://testnet.monadvision.com/tx/0xfc88c79bce09a86510cddae1e3c8c0eeb8017f79efafee3ced060eb3b6ae6a05
+
+[Mojo 提交简介] 这是一个面向非 Web3 背景研发新人和大学生的零门槛上链入口。观众扫码、按一下指纹，10 秒就能在 Monad 测试网投出一票、留下留言，不需要装钱包、助记词或代币。换一份队伍名单，这套入口就能复用于下一场活动。大屏左栏来自中心化数据库、右栏来自 Monad 合约；现场请观众亲手改左栏的票数和留言，右栏纹丝不动，点开交易哈希即可验证——让不了解去中心化的人十秒内看懂：规则写在合约里，谁都改不了。
+
+[一句话钩子] 没碰过钱包的人，10 秒投一票；这一票，谁都改不掉。
+[收尾] 换一份队伍名单，下一场活动、校园选举、会议表决，直接拿来用。

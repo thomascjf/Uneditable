@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>指纹上链 · 大屏</title>
+<link rel="stylesheet" href="/style.css">
+<style>
+body{min-height:100vh;display:flex;flex-direction:column;gap:14px;padding:20px 28px 12px;overflow:hidden}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
+h1{font-size:clamp(30px,3.3vw,54px);margin:0;letter-spacing:2px}
+.en{font-size:.34em;color:var(--muted);letter-spacing:5px;vertical-align:middle;margin-left:14px}
+.brand p{margin:6px 0 0;color:var(--muted);font-size:clamp(12px,1.05vw,17px)}
+.chain-meta{text-align:right;font-size:13px;color:var(--muted);line-height:1.9}
+.chain-meta code{color:#bcd0e4}
+.live{font-weight:700}.live.ok{color:var(--chain)}.live.bad{color:var(--danger)}
+.stage{display:grid;grid-template-columns:1fr 1fr;gap:16px;flex:1;min-height:0}
+.col{display:flex;flex-direction:column;min-height:0;border:1px solid var(--line);border-radius:16px;background:var(--panel);overflow:hidden}
+.col.left{border-top:3px solid var(--central)}
+.col.right{border-top:3px solid var(--chain)}
+.col-head{display:flex;align-items:center;gap:12px;padding:14px 20px 4px}
+.col-head h2{font-size:clamp(18px,1.6vw,26px);margin:0}
+.dot{width:10px;height:10px;border-radius:50%}
+.left .dot{background:var(--central);box-shadow:0 0 14px var(--central)}
+.right .dot{background:var(--chain);box-shadow:0 0 14px var(--chain)}
+.col .sub{padding:0 20px 10px;color:var(--muted);font-size:12px}
+.col h3{margin:2px 20px 8px;font-size:12px;color:var(--muted);font-weight:600;letter-spacing:1px}
+.votes{margin:0 20px 10px;max-height:24%;overflow:auto}
+.vote-row{display:flex;align-items:center;gap:10px;padding:5px 0;font-size:15px}
+.rank{width:22px;color:var(--muted);text-align:right}
+.tname{width:34%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar{flex:1;height:8px;background:#16202c;border-radius:6px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:6px}
+.left .bar i{background:linear-gradient(90deg,#ff9a52,#ffc38c)}
+.right .bar i{background:linear-gradient(90deg,#37d99a,#8bf0c9)}
+.vote-row b{width:38px;text-align:right;font-variant-numeric:tabular-nums}
+.feed{flex:1;min-height:0;overflow:auto;margin:0 12px 12px;padding:0 8px}
+.entry{border-top:1px solid var(--line);padding:9px 8px;font-size:15px}
+.e-head{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.badge{background:#1a2634;color:#bcd0e4;border-radius:6px;padding:2px 8px;font-size:12px}
+.time{color:var(--muted);font-size:12px}
+.e-text{margin:6px 0 5px;line-height:1.45;word-break:break-word}
+.tx{font-size:12px;color:#8fb8ff}
+.ms{font-size:12px;color:var(--chain);margin-left:10px}
+.local{font-size:12px;color:var(--central)}
+.qrcodes{display:flex;gap:12px;justify-content:flex-end}
+.qr{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:7px 13px}
+.qr img{width:60px;height:60px;background:#fff;border-radius:6px}
+.qr b{font-size:13px}.qr small{display:block;color:var(--muted);font-size:11px}
+.statusbar{display:flex;gap:22px;flex-wrap:wrap;font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:9px}
+.banner{display:none;background:linear-gradient(90deg,#7a2b12,#b74a19);color:#fff;
+  font-size:clamp(14px,1.35vw,20px);font-weight:700;text-align:center;
+  padding:11px 14px;border-radius:10px;box-shadow:0 6px 30px rgba(0,0,0,.4)}
+.banner.show{display:block}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <h1>指纹上链 <span class="en">UNEDITABLE</span></h1>
+    <p>按一下指纹，10 秒上链；换一份名单，下一场活动就能复用</p>
+  </div>
+  <div class="chain-meta">
+    <div>Monad Testnet · chainId 10143</div>
+    <div>合约 <code id="addr">—</code></div>
+    <div id="live" class="live bad">● 连接中</div>
+  </div>
+</header>
+<div id="tamperBanner" class="banner"></div>
+
+<main class="stage">
+  <section class="col left">
+    <div class="col-head"><span class="dot"></span><h2>中心化数据库</h2><span class="tag tag-central">可以改</span></div>
+    <div class="sub">服务器上的 store.json · 管理员可任意修改</div>
+    <h3>票数</h3><div id="centralVotes" class="votes"></div>
+    <h3>现场留言</h3><div id="centralFeed" class="feed"></div>
+  </section>
+  <section class="col right">
+    <div class="col-head"><span class="dot"></span><h2>Monad 测试网</h2><span class="tag tag-chain">改不了</span></div>
+    <div class="sub">直接读合约 BlitzBoard 的链上事件 · 每条都能点开交易验证</div>
+    <h3>票数</h3><div id="chainVotes" class="votes"></div>
+    <h3>链上留言</h3><div id="chainFeed" class="feed"></div>
+  </section>
+</main>
+
+<aside class="qrcodes">
+  <div class="qr"><img src="/api/qr.svg?u=/vote.html" alt="投票二维码"><div><b>扫码投票</b><small>手机 4G 也能用</small></div></div>
+  <div class="qr"><img src="/api/qr.svg?u=/admin.html" alt="管理二维码"><div><b>亲手改左边</b><small>演示时投屏</small></div></div>
+  <div class="qr"><img id="faucetQr" alt="水龙头二维码"><div><b>测试币水龙头</b><small>仅自付 gas 时需要</small></div></div>
+</aside>
+
+<footer class="statusbar">
+  <span id="statCentral">中心化 0 条</span>
+  <span id="statEntries">链上 0 条</span>
+  <span id="statLast">最近确认 —</span>
+  <span id="statRelayer">转发器 —</span>
+  <span id="statTime"></span>
+</footer>
+
+<script>
+const el=(id)=>document.getElementById(id);
+const esc=(s)=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let cfg=null,tm=new Map();
+const EXPLORER_DEFAULT='https://testnet.monadvision.com';
+const short=(a)=>a?a.slice(0,10)+'…'+a.slice(-6):'未部署';
+const fmt=(ts)=>{const d=new Date(Number(ts)*1000);return isNaN(d.getTime())?'':d.toLocaleTimeString('zh-CN',{hour12:false})};
+
+function renderVotes(node,votes){
+  const arr=Object.entries(votes||{}).map(([k,v])=>({id:Number(k),n:Number(v)}))
+    .filter(x=>x.n>0).sort((a,b)=>b.n-a.n||a.id-b.id).slice(0,8);
+  const max=Math.max(1,arr[0]?.n||1);
+  node.innerHTML=arr.length?arr.map((x,i)=>`<div class="vote-row"><span class="rank">${i+1}</span><span class="tname">${esc(tm.get(x.id)||'#'+x.id)}</span><span class="bar"><i style="width:${(x.n/max*100).toFixed(1)}%"></i></span><b>${x.n}</b></div>`).join('')
+    :'<div class="empty">等待第一票…</div>';
+}
+function renderFeed(node,entries,isChain){
+  const list=(entries||[]).slice(-14).reverse();
+  const ex=cfg?.explorer||EXPLORER_DEFAULT;
+  node.innerHTML=list.length?list.map(e=>`<div class="entry">
+    <div class="e-head"><span class="badge">${esc(tm.get(e.teamId)||'#'+e.teamId)}</span><span class="time">${fmt(e.timestamp)}</span></div>
+    <div class="e-text">${esc(e.text||'（无留言）')}</div>
+    ${isChain
+      ? `<a class="tx" href="${ex}/tx/${esc(e.txHash)}" target="_blank" rel="noopener">${esc((e.txHash||'').slice(0,14))}… ↗</a>${e.confirmedMs?`<span class="ms">${(e.confirmedMs/1000).toFixed(1)}s 确认</span>`:''}`
+      : `<span class="local">store.json · 可改</span>`}
+  </div>`).join(''):'<div class="empty">暂无留言 · 扫码投第一票</div>';
+}
+function applyCentral(c){renderVotes(el('centralVotes'),c.votes);renderFeed(el('centralFeed'),c.entries,false);el('statCentral').textContent=`中心化 ${c.entries.length} 条`}
+function applyChain(c){renderVotes(el('chainVotes'),c.votes);renderFeed(el('chainFeed'),c.entries,true);el('statEntries').textContent=`链上 ${c.entries.length} 条`}
+
+let bannerTimer;
+function showTamper(note){
+  const b=el('tamperBanner');
+  b.textContent='⚠ 中心化数据库刚被修改：'+(note?.detail||'')+'　—— 右栏从链上读，未发生任何变化';
+  b.classList.add('show');clearTimeout(bannerTimer);
+  bannerTimer=setTimeout(()=>b.classList.remove('show'),9000);
+}
+function showVote(v){
+  el('statLast').textContent=`最近确认 ${v.elapsedMs?(v.elapsedMs/1000).toFixed(1)+'s':'—'} · ${tm.get(Number(v.teamId))||v.teamId}`;
+}
+
+async function boot(){
+  cfg=await(await fetch('/api/config')).json();
+  tm=new Map(cfg.teams.map(t=>[t.id,t.name]));
+  el('addr').textContent=short(cfg.contractAddress);
+  el('addr').title=cfg.contractAddress||'';
+  el('faucetQr').src='/api/qr.svg?u='+encodeURIComponent(cfg.faucet);
+  el('statRelayer').textContent='转发器 '+short(cfg.relayer);
+  const st=await(await fetch('/api/state')).json();
+  applyCentral(st.central);applyChain(st.chain);
+}
+function connectSSE(){
+  const es=new EventSource('/api/stream');
+  es.onopen=()=>{el('live').textContent='● 实时连接';el('live').className='live ok'};
+  es.onerror=()=>{el('live').textContent='● 重连中';el('live').className='live bad'};
+  es.addEventListener('snapshot',e=>{const s=JSON.parse(e.data);applyCentral(s.central);applyChain(s.chain)});
+  es.addEventListener('central',e=>applyCentral(JSON.parse(e.data)));
+  es.addEventListener('chain',e=>applyChain(JSON.parse(e.data)));
+  es.addEventListener('tamper',e=>showTamper(JSON.parse(e.data)));
+  es.addEventListener('vote',e=>showVote(JSON.parse(e.data)));
+}
+setInterval(()=>{el('statTime').textContent=new Date().toLocaleTimeString('zh-CN',{hour12:false})},1000);
+boot().then(connectSSE).catch(e=>console.error('[screen]',e));
+</script>
+</body>
+</html>

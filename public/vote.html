@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>指纹上链 · 投票</title>
+<link rel="stylesheet" href="/style.css">
+<style>
+.wrap{max-width:520px;margin:0 auto;padding:22px 18px 40px}
+h1{font-size:27px;margin:0 0 4px}
+.head p{margin:0 0 20px;color:var(--muted);font-size:13px}
+.switch-row{display:flex;gap:14px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:10px}
+.switch-row b{font-size:14px}.switch-row small{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+.sw{position:relative;flex:0 0 50px;height:28px}
+.sw input{position:absolute;opacity:0;width:100%;height:100%;margin:0;z-index:2;cursor:pointer}
+.sw span{position:absolute;inset:0;background:#2a3746;border-radius:999px;transition:background .2s}
+.sw span:after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;background:#fff;border-radius:50%;transition:transform .2s}
+.sw input:checked+span{background:var(--accent)}
+.sw input:checked+span:after{transform:translateX(22px)}
+.note{font-size:12px;color:var(--muted);padding:9px 12px;border-left:2px solid var(--accent);margin-bottom:14px;line-height:1.6}
+.teams{max-height:290px;overflow:auto;border:1px solid var(--line);border-radius:12px;margin-bottom:16px;background:var(--panel2)}
+.team{display:flex;width:100%;align-items:center;gap:10px;padding:12px 14px;background:transparent;border:0;border-bottom:1px solid var(--line);color:var(--text);font-size:15px;text-align:left;cursor:pointer}
+.team:last-child{border-bottom:0}
+.team.sel{background:rgba(139,108,255,.18)}
+.tid{font-size:12px;color:var(--muted);width:46px;flex:0 0 46px}
+.tname{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chk{color:var(--accent);opacity:0;font-weight:800}.team.sel .chk{opacity:1}
+.result{margin-top:18px;padding:16px;border-radius:12px;border:1px solid rgba(55,217,154,.35);background:rgba(55,217,154,.07);display:none;line-height:1.8;font-size:14px}
+.result.show{display:block}
+.result .ok{font-size:19px;font-weight:800;color:var(--chain);margin-bottom:6px}
+.result .hash{font-size:11px;color:var(--muted);word-break:break-all;margin-top:6px}
+.hint{margin-top:12px;font-size:13px;color:var(--danger);line-height:1.6;min-height:18px}
+footer{margin-top:26px;color:var(--muted);font-size:11px;text-align:center;line-height:1.8}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:r .7s linear infinite}
+@keyframes r{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head"><h1>指纹上链</h1><p>选一支队伍，留一句话，投出去。不需要钱包、助记词或代币。</p></div>
+
+  <div class="switch-row">
+    <label class="sw"><input type="checkbox" id="selfGas" checked><span></span></label>
+    <div><b>我自己有 Monad 代币，自己付 gas</b><small>开启：连钱包直签；关闭：按指纹，由转发器代付</small></div>
+  </div>
+  <div id="note" class="note"></div>
+
+  <div class="field"><label>搜索队伍（共 40 支）</label><input id="search" placeholder="队名或编号，例如 685"></div>
+  <div id="teams" class="teams"></div>
+  <div class="field"><label>留一句话（可选，最多 200 字）</label><textarea id="text" maxlength="200" rows="2" placeholder="想对全场说点什么…"></textarea></div>
+
+  <button id="submit" class="btn btn-primary btn-wide">连接钱包并投票</button>
+  <button id="enable" class="btn btn-wide" style="margin-top:10px;display:none">首次使用：启用指纹</button>
+  <div id="result" class="result"></div>
+  <div id="hint" class="hint"></div>
+
+  <footer>Monad Testnet · chainId 10143<br>合约 <span class="mono" id="contract">—</span></footer>
+</div>
+
+<script>
+const el=(id)=>document.getElementById(id);
+const esc=(s)=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const toB64u=(u8)=>btoa(String.fromCharCode(...u8)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const fromB64u=(s)=>Uint8Array.from(atob(String(s).replace(/-/g,'+').replace(/_/g,'/')+'='.repeat((4-String(s).length%4)%4)),c=>c.charCodeAt(0));
+const hex2u8=(h)=>Uint8Array.from(String(h).replace(/^0x/,'').match(/../g),x=>parseInt(x,16));
+const u8hex=(u8)=>'0x'+Array.from(u8).map(b=>b.toString(16).padStart(2,'0')).join('');
+const post=async(p,b)=>{const r=await fetch(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const j=await r.json();if(!r.ok)throw new Error(j.error||r.statusText);return j};
+
+let cfg=null,teams=[],selected=null,busy=false;
+let credIdB64=localStorage.getItem('uneditable.cred');
+
+function setBusy(v,label){
+  busy=v;el('submit').disabled=v;
+  el('submit').innerHTML=v?`<span class="spin"></span> ${label||'正在上链…'}`:btnLabel();
+}
+function btnLabel(){return el('selfGas').checked?'连接钱包并投票':'按一下指纹，投票上链'}
+function say(msg){el('hint').textContent=msg||''}
+function renderTeams(q=''){
+  const s=String(q||'').trim().toLowerCase();
+  const list=teams.filter(t=>!s||String(t.id).includes(s)||t.name.toLowerCase().includes(s));
+  el('teams').innerHTML=list.length?list.map(t=>`<button class="team ${selected===t.id?'sel':''}" data-id="${t.id}"><span class="tid">#${t.id}</span><span class="tname">${esc(t.name)}</span><span class="chk">✓</span></button>`).join('')
+    :'<div class="empty">没有匹配的队伍</div>';
+  el('teams').querySelectorAll('.team').forEach(b=>b.addEventListener('click',()=>{selected=Number(b.dataset.id);renderTeams(el('search').value);say('')}));
+}
+function syncMode(){
+  const self=el('selfGas').checked;
+  el('submit').textContent=btnLabel();
+  el('enable').style.display=self?'none':'block';
+  el('note').innerHTML=self
+    ? '需要手机里装有钱包 App 并有少量 Monad 测试网 MON。没装钱包？<b>关掉上面的开关</b>，直接按指纹就行，gas 我们出。'
+    : '零门槛路径：指纹签名 → 转发器代付 gas → 合约用 Monad 的 P256 预编译 <code>0x0100</code> 独立验签。不用装任何东西。';
+  say('');
+}
+function showResult(res){
+  const ex=cfg?.explorer||'https://testnet.monadvision.com';
+  el('result').innerHTML=`<div class="ok">✓ 已上链，谁都改不掉</div>
+    <div>用时 <b>${res.elapsedMs?(res.elapsedMs/1000).toFixed(1)+' 秒':'—'}</b> · 队伍 <b>${esc((cfg.teams.find(t=>t.id===Number(res.teamId))||{}).name||res.teamId)}</b></div>
+    <div><a href="${esc(res.explorerUrl||ex+'/tx/'+res.txHash)}" target="_blank" rel="noopener">在 MonadVision 查看这笔交易 ↗</a></div>
+    <div class="hash">${esc(res.txHash)}</div>
+    <div style="margin-top:8px;color:var(--muted)">去大屏看看：右栏从链上读，管理员也改不了。</div>`;
+  el('result').classList.add('show');
+}
+
+async function enablePasskey(){
+  if(!window.PublicKeyCredential||!navigator.credentials)throw new Error('当前浏览器不支持 passkey，请用手机自带浏览器打开（需 HTTPS）');
+  setBusy(true,'正在启用指纹…');
+  const cred=await navigator.credentials.create({publicKey:{
+    challenge:crypto.getRandomValues(new Uint8Array(32)),
+    rp:{id:cfg.rpId,name:'指纹上链'},
+    user:{id:crypto.getRandomValues(new Uint8Array(16)),name:'现场观众',displayName:'现场观众'},
+    pubKeyCredParams:[{type:'public-key',alg:-7}],
+    authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required',residentKey:'preferred'},
+    timeout:60000,attestation:'none'
+  }});
+  const spki=cred.response.getPublicKey();
+  if(!spki)throw new Error('浏览器未返回公钥，请换用手机自带浏览器');
+  const key=await crypto.subtle.importKey('spki',spki,{name:'ECDSA',namedCurve:'P-256'},true,['verify']);
+  const raw=new Uint8Array(await crypto.subtle.exportKey('raw',key));
+  if(raw.length!==65)throw new Error('公钥不是 P-256，请确认设备使用了 ES256');
+  credIdB64=toB64u(new Uint8Array(cred.rawId));
+  await post('/api/passkey/register',{credIdB64,qx:u8hex(raw.slice(1,33)),qy:u8hex(raw.slice(33,65))});
+  localStorage.setItem('uneditable.cred',credIdB64);
+  setBusy(false);
+  say('指纹已启用，现在可以投票了');
+}
+async function votePasskey(){
+  if(!credIdB64)await enablePasskey();
+  const text=el('text').value.trim();
+  setBusy(true,'正在取挑战值…');
+  const ch=await post('/api/challenge',{teamId:selected,text,credIdB64});
+  setBusy(true,'等指纹…');
+  const assertion=await navigator.credentials.get({publicKey:{
+    challenge:hex2u8(ch.challenge),rpId:ch.rpId,
+    allowCredentials:[{type:'public-key',id:fromB64u(credIdB64)}],
+    userVerification:'required',timeout:60000
+  }});
+  if(!assertion)throw new Error('指纹验证被取消');
+  setBusy(true,'正在上链…');
+  const res=await post('/api/vote/passkey',{
+    teamId:selected,text,nonce:ch.nonce,deadline:ch.deadline,
+    assertion:{
+      credIdB64:toB64u(new Uint8Array(assertion.rawId)),
+      authDataB64:toB64u(new Uint8Array(assertion.response.authenticatorData)),
+      clientDataJSONB64:toB64u(new Uint8Array(assertion.response.clientDataJSON)),
+      signatureB64:toB64u(new Uint8Array(assertion.response.signature))
+    }
+  });
+  showResult({...res,teamId:selected});
+  setBusy(false);
+}
+
+async function voteWallet(){
+  const p=window.ethereum;
+  if(!p){
+    say('没检测到钱包。请在钱包 App 内置浏览器打开，或直接关掉上面的开关走指纹代付（推荐）。');
+    return;
+  }
+  setBusy(true,'正在连接钱包…');
+  const accounts=await p.request({method:'eth_requestAccounts'});
+  const from=accounts[0];
+  const chainHex='0x'+cfg.chainId.toString(16);
+  try{await p.request({method:'wallet_switchEthereumChain',params:[{chainId:chainHex}]})}
+  catch(e){
+    await p.request({method:'wallet_addEthereumChain',params:[{
+      chainId:chainHex,chainName:'Monad Testnet',rpcUrls:[cfg.rpc],
+      nativeCurrency:{name:'MON',symbol:'MON',decimals:18},
+      blockExplorerUrls:[cfg.explorer]
+    }]});
+  }
+  const text=el('text').value.trim();
+  const prep=await post('/api/vote/wallet/prepare',{teamId:selected,text});
+  setBusy(true,'请在钱包里签名…');
+  const sig=await p.request({method:'eth_signTypedData_v4',params:[from,JSON.stringify(prep.typedData)]});
+  const enc=await post('/api/vote/wallet/encode',{teamId:selected,text,deadline:prep.deadline,sig});
+  setBusy(true,'等待链上确认…');
+  const txHash=await p.request({method:'eth_sendTransaction',params:[{from,to:enc.to,data:enc.data}]});
+  await post('/api/vote/wallet/confirm',{teamId:selected,text,txHash});
+  showResult({txHash,teamId:selected,explorerUrl:cfg.explorer+'/tx/'+txHash});
+  setBusy(false);
+}
+
+el('selfGas').addEventListener('change',syncMode);
+el('search').addEventListener('input',e=>renderTeams(e.target.value));
+el('enable').addEventListener('click',async()=>{try{await enablePasskey()}catch(e){setBusy(false);say('启用失败：'+e.message)}});
+el('submit').addEventListener('click',async()=>{
+  if(busy)return;
+  if(selected===null){say('先选一支队伍');return}
+  say('');
+  try{el('selfGas').checked?await voteWallet():await votePasskey()}
+  catch(e){setBusy(false);say('投票失败：'+e.message)}
+});
+
+(async()=>{
+  try{
+    cfg=await(await fetch('/api/config')).json();
+    teams=cfg.teams;
+    el('contract').textContent=cfg.contractAddress?cfg.contractAddress.slice(0,10)+'…'+cfg.contractAddress.slice(-6):'未部署';
+    renderTeams();syncMode();
+    if(!location.protocol.startsWith('https')&&!['localhost','127.0.0.1'].includes(location.hostname))
+      say('⚠ 当前不是 HTTPS，passkey 不可用；请用线上 https 链接打开。');
+  }catch(e){say('初始化失败：'+e.message)}
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "projectName": "指纹上链",
+  "repoName": "Uneditable",
+  "subtitle": "按一下指纹，10 秒上链；换一份名单，下一场活动就能复用",
+  "eventId": 18,
+  "chainId": 10143,
+  "rpc": "https://testnet-rpc.monad.xyz",
+  "explorer": "https://testnet.monadvision.com",
+  "contractAddress": "0x92d7bd2fa6c169ed653a44fa94ba4b94e24f1f09",
+  "deployTxHash": "0xe09f6a109add89a4274a8dcbe29d496bbffe60ce203c7e4608b401547369ae4f",
+  "deployedAt": "2026-11-21T07:43:26.275Z",
+  "rpId": "uneditable.app.workbuddy.host",
+  "origin": "https://uneditable.app.workbuddy.host",
+  "baseUrl": "https://uneditable.app.workbuddy.host",
+  "lockConfigAfterSync": false,
+  "relayerKeyFile": "relayer.key",
+  "deployBlock": 81521563
+}

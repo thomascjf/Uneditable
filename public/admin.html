@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>指纹上链 · 后台管理（现场篡改）</title>
+<link rel="stylesheet" href="/style.css">
+<style>
+.wrap{max-width:920px;margin:0 auto;padding:24px 18px 50px}
+h1{font-size:27px;margin:0 0 6px}
+.head p{margin:0 0 20px;color:var(--muted);font-size:14px;line-height:1.7}
+.warn{border-left:3px solid var(--central);background:rgba(255,154,82,.08);padding:12px 16px;border-radius:8px;font-size:14px;line-height:1.7;margin-bottom:18px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media(max-width:780px){.grid{grid-template-columns:1fr}}
+.card h2{font-size:16px;margin:0 0 14px}
+.state-row{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:14px}
+.state-row span:first-child{color:var(--muted)}
+.log{margin-top:16px;font-size:13px;color:var(--chain);min-height:20px;line-height:1.7}
+.pill{display:inline-block;background:#1a2634;color:#bcd0e4;border-radius:6px;padding:2px 8px;font-size:12px;margin-right:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <h1>后台管理 · 只改左边</h1>
+    <p>这一页只改中心化数据库 <code>store.json</code>。右边 Monad 合约永远不会变。</p>
+  </div>
+  <div class="warn"><b>现场演示动作：</b>把这个二维码投到大屏，请台下任意一位观众扫码，亲手改票数或删掉一条留言。左栏立刻变，右栏纹丝不动 —— 然后点开右栏的交易哈希去浏览器验证。</div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>① 改票数</h2>
+      <div class="field"><label>选队伍</label><select id="teamSel"></select></div>
+      <div class="field"><label>把票数改成</label><input id="voteVal" type="number" min="0" max="9999" value="99"></div>
+      <button class="btn btn-danger btn-wide" data-op="setVotes">改掉票数</button>
+    </div>
+    <div class="card">
+      <h2>② 删留言</h2>
+      <div class="field"><label>选一条留言</label><select id="delSel"></select></div>
+      <button class="btn btn-danger btn-wide" data-op="deleteEntry">删掉这条</button>
+    </div>
+    <div class="card">
+      <h2>③ 改文字</h2>
+      <div class="field"><label>选一条留言</label><select id="editSel"></select></div>
+      <div class="field"><label>改成</label><input id="editText" value="这条被管理员改过了"></div>
+      <button class="btn btn-danger btn-wide" data-op="editText">改成这句话</button>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h2>中心化库当前状态 <span id="ver" class="muted" style="font-size:12px"></span></h2>
+    <div id="state"></div>
+  </div>
+
+  <div class="card" style="margin-top:16px;display:flex;gap:20px;align-items:center;flex-wrap:wrap">
+    <img src="/api/qr.svg?u=/admin.html" width="148" height="148" alt="管理页二维码" style="background:#fff;border-radius:8px">
+    <div>
+      <h2>把这一页投屏给观众</h2>
+      <p class="muted" style="font-size:13px;line-height:1.7">扫码后三部手机可以同时改。改完看大屏：左栏立刻变，右栏从链上读，一动不动。</p>
+      <button id="reseed" class="btn">重置并预置演示数据</button>
+      <a class="btn" href="/screen.html" target="_blank">打开大屏 ↗</a>
+      <a class="btn" href="/api/qr.svg?u=/admin.html" target="_blank">下载二维码 ↗</a>
+    </div>
+  </div>
+  <div id="log" class="log"></div>
+</div>
+
+<script>
+const el=(id)=>document.getElementById(id);
+const esc=(s)=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const post=async(p,b)=>{const r=await fetch(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const j=await r.json();if(!r.ok)throw new Error(j.error||r.statusText);return j};
+let cfg=null,tm=new Map();
+
+const keep=(sel,fn)=>{const v=el(sel).value;fn();if([...el(sel).options].some(o=>o.value===v))el(sel).value=v};
+function fillTeams(){keep('teamSel',()=>{el('teamSel').innerHTML=cfg.teams.map(t=>`<option value="${t.id}">#${t.id} ${esc(t.name)}</option>`).join('')})}
+function fillEntries(s){
+  const opts=s.entries.length?s.entries.slice().reverse().map(e=>`<option value="${e.id}">#${e.id} ${esc(e.text||'（无留言）').slice(0,32)}</option>`).join(''):'<option value="">（暂无留言）</option>';
+  keep('delSel',()=>el('delSel').innerHTML=opts);
+  keep('editSel',()=>el('editSel').innerHTML=opts);
+}
+async function refresh(){
+  const s=await(await fetch('/api/state')).json();
+  const c=s.central;
+  el('ver').textContent='v'+c.version;
+  fillEntries(c);
+  const votes=Object.entries(c.votes||{}).sort((a,b)=>b[1]-a[1]);
+  el('state').innerHTML=`<div class="state-row"><span>留言条数</span><b>${c.entries.length}</b></div>`
+    +`<div class="state-row"><span>总票数</span><b>${votes.reduce((n,[,v])=>n+Number(v),0)}</b></div>`
+    +`<div class="state-row"><span>各队票数</span><div>${votes.length?votes.map(([id,n])=>`<span class="pill">${esc(tm.get(Number(id))||'#'+id)} ${n}</span>`).join(''):'—'}</div></div>`
+    +(c.audit.length?`<div class="state-row"><span>最近改动</span><span>${esc(c.audit[c.audit.length-1].detail)}</span></div>`:'');
+}
+function log(m){el('log').textContent=m}
+
+document.querySelectorAll('[data-op]').forEach(b=>b.addEventListener('click',async()=>{
+  const op=b.dataset.op;let payload={};
+  if(op==='setVotes')payload={teamId:Number(el('teamSel').value),value:Number(el('voteVal').value)};
+  if(op==='deleteEntry')payload={id:Number(el('delSel').value)};
+  if(op==='editText')payload={id:Number(el('editSel').value),text:el('editText').value};
+  if(Object.values(payload).some(v=>Number.isNaN(v))) { log('请先预置演示数据'); return; }
+  try{const r=await post('/api/central/tamper',{op,payload});log('✓ '+r.note.detail+'　（右栏不变）');await refresh()}
+  catch(e){log('✗ '+e.message)}
+}));
+
+el('reseed').addEventListener('click',async()=>{
+  try{
+    await post('/api/central/seed',{teamIds:cfg.teams.slice(0,8).map(t=>t.id)});
+    log('✓ 已重置并预置 6 条中心化演示数据');await refresh();
+  }catch(e){log('✗ '+e.message)}
+});
+
+(async()=>{
+  try{
+    cfg=await(await fetch('/api/config')).json();
+    tm=new Map(cfg.teams.map(t=>[t.id,t.name]));
+    fillTeams();await refresh();
+    const es=new EventSource('/api/stream');
+    es.addEventListener('central',()=>refresh());
+    es.addEventListener('tamper',e=>{log('✓ '+JSON.parse(e.data).detail+'　（右栏不变）')});
+  }catch(e){log('初始化失败：'+e.message)}
+})();
+</script>
+</body>
+</html>
