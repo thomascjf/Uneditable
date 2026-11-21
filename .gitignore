@@ -34,3 +34,6 @@ Uneditable-src.zip
 
 # 链上交易索引缓存（运行时生成，可由 Voted 事件重建）
 chain-tx.json
+
+# Office 打开文件时产生的临时锁文件
+~$*
