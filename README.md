@@ -109,6 +109,39 @@ Monad Blitz@广州（eventId=18）参赛项目。它不是一个投票应用，�
 
 ---
 
+## 已知限制（2026-11-21 赛后复盘，未修复）
+
+**现象**：同一个手机浏览器投票成功后，再次点「首次使用：启用指纹」，可以再投出一票，而且两票都是真实上链、真实通过合约内 P256 验签的交易。
+
+这**不是防重放失效，也不是 P256 验签被绕过**。一次性 challenge、`usedChallenge[nonce]`、`0x0100` 预编译验签、`rpIdHash` / UP / UV 校验全部正常通过——新凭据产生的本来就是一枚合法签名。问题在于**限投的维度**：系统把「一枚 passkey 凭据」当成了「一个人」，而同一个浏览器可以无限创建新凭据。
+
+| 层 | 代码位置 | 实际行为 |
+| --- | --- | --- |
+| 按钮 | `public/vote.html` `syncMode()` | 指纹模式下无条件常显，从不检查 `credIdB64` 或「已投票」状态；点击（184 行）无条件调用 `enablePasskey()` |
+| 注册 | `public/vote.html` `enablePasskey()` | `navigator.credentials.create()` 每次使用随机 `user.id`，且**未传 `excludeCredentials`**；WebAuthn 允许同一 `rpId` 下存在多枚凭据，于是每次生成全新 `rawId` → 全新 `credIdHash`，并 `localStorage.setItem('uneditable.cred', ...)` **覆盖掉旧凭据** |
+| 本地状态 | `public/vote.html:70` | `localStorage['uneditable.cred']` 有存也有读（`allowCredentials` 用它），但存的是「用哪枚凭据签名」，不是「是否已投票」 |
+| 服务端 | `server/webauthn.js` `registerCredential()` | 只按 `credIdHash` 登记公钥，无去重、无设备绑定、无「已投票」状态；`issueChallenge()` / `verifyAssertion()` 均不查是否已投过 |
+| 合约 | `contracts/BlitzBoard.sol:172` | `require(!usedCredential[credIdHash])` 是**每枚凭据一票**。新哈希从未出现 → 放行。`hasVoted[msg.sender]` 仅用于钱包直签路径：passkey 交易由转发器代发，`msg.sender` 恒为转发器地址，若用它限投会导致全场只能投一票，因此是**有意不用** |
+
+**链上可自行验证**：`GET /api/state` 返回的 `chain.entries` 里，`kind=1` 的指纹票各自持有互不相同的 `credHash`，票数等于不同凭据数——限投确实按凭据计数，不是按人计数。
+
+**设计归属**：`docs/PLAN.md:122,125` 原本就写的是「每 passkey 限投一票」「防重放 + 每地址 / 每凭据限投」，合约实现**完全符合原设计**。这是设计粒度撑不起「一人一票」叙事，属于设计缺陷而非实现偏离。讲稿口径见 `docs/DEMO_SCRIPT_90S.md:40`：**不说「一人一票」，说「一枚 passkey 凭据一票」**。
+
+**影响边界**
+
+- **不受影响**：链上每一票都是真实交易、真实 P256 验签；管理员改左栏、右栏纹丝不动；「谁都改不了」的核心演示成立。
+- **受影响**：「一人一票」的公平性，以及任何需要抗女巫（Sybil）的正式表决场景。现场若有人连点两次「启用指纹」即可刷票。
+
+**为何保留未修**：参赛提交已 `approved`、线上 Demo 数据与物料已定稿，赛后不再改动已提交的代码与线上行为。此节作为已知限制如实公开，供复用者判断。
+
+**若要用于下一场活动，按代价递增加固**
+
+1. **L0 前端**（只挡「顺手点」）：`syncMode()` 依据 `credIdB64` 隐藏 / 禁用按钮并改文案；`create()` 补 `excludeCredentials:[{type:'public-key',id:fromB64u(credIdB64)}]`；投票成功后写 `localStorage['uneditable.voted']=txHash`，初始化时读它禁用提交。清缓存、无痕窗口、换浏览器、直接调 API 都能绕过，**不能当安全边界**。
+2. **L1 服务端**（真正挡住绕过前端的调用）：注册时要求活动方签发的一次性入场码并把 `votedCredentials` 落盘；`/api/challenge` 前置读链上 `usedCredential[credHash]` 并拒绝。纯 IP 限流不可靠——现场同一 WiFi 会误伤一批观众。
+3. **L2 合约**：改用活动方签发的 `nullifier` 限投（或 zk / Semaphore 匿名一人一票）。当前合约已部署且 `configLocked=true`，换地址意味着 README、提交信息、二维码与 Mojo 物料全部重做。
+
+---
+
 ## 本地运行
 
 ```bash
