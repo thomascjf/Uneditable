@@ -1,0 +1,18 @@
+# Mojo 凭证：绝不入库（.mojo/ 内部另有 .gitignore 兜底）
+.mojo/agent.json
+
+# Agent 本地数据
+.workbuddy/
+.claude/
+
+# 依赖与构建产物
+node_modules/
+dist/
+build/
+coverage/
+
+# 系统 / 日志
+.DS_Store
+*.log
+.env
+.env.*
