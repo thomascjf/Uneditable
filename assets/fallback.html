@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>指纹上链 · 断网兜底演示</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;height:100vh;background:#070a0f;color:#eaf1f8;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px}
+h1{font-size:clamp(24px,3vw,40px);margin:0}
+.sub{color:#8598ab;font-size:clamp(12px,1.2vw,16px);margin:0 0 6px;text-align:center}
+img{max-width:94vw;max-height:62vh;border:1px solid #1d2a38;border-radius:12px;object-fit:contain}
+.cap{font-size:clamp(16px,2vw,26px);font-weight:700;color:#ff9a52;text-align:center;max-width:1100px}
+.bar{color:#8598ab;font-size:13px;text-align:center}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#37d99a;margin-right:8px}
+</style>
+</head>
+<body>
+<h1>指纹上链 · 断网兜底演示</h1>
+<p class="sub">按一下指纹，10 秒上链；换一份名单，下一场活动就能复用　·　本页完全离线，不依赖网络</p>
+<img id="shot" src="screen-before.png" alt="大屏双栏对照">
+<div class="cap" id="cap"></div>
+<div class="bar" id="bar"></div>
+<script>
+const phases=[
+  {f:'screen-before.png',t:'① 左栏来自中心化数据库，右栏来自 Monad 合约 —— 同一份内容双写',ms:7500},
+  {f:'screen-after.png',t:'② 请观众亲手改票数：左栏立刻变成 999，右栏从链上读，纹丝不动',ms:8500}
+];
+const shot=document.getElementById('shot'),cap=document.getElementById('cap'),bar=document.getElementById('bar');
+let i=0;
+function show(){
+  const p=phases[i];
+  shot.src=p.f;
+  cap.textContent=p.t;
+  bar.innerHTML='<span class="dot"></span>'+(i+1)+' / '+phases.length+'　·　点开右栏交易哈希可在 MonadVision 验证';
+  setTimeout(()=>{i=(i+1)%phases.length;show()},p.ms);
+}
+show();
+</script>
+</body>
+</html>
